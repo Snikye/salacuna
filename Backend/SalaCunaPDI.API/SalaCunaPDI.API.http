@@ -1,0 +1,6 @@
+@SalaCunaPDI.API_HostAddress = http://localhost:5227
+
+GET {{SalaCunaPDI.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
