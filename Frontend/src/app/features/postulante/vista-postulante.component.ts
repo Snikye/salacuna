@@ -69,7 +69,12 @@ import { SimuladorFechaService } from '../../core/services/simulador-fecha.servi
           </div>
           <div class="summary-item">
             <span class="label">Menor Causante:</span>
-            <strong>{{ funcionarioActual.nombreMenor || 'Por completar' }} ({{ funcionarioActual.rutMenor || 'S/R' }})</strong>
+            <strong>
+              {{ funcionarioActual.nombreMenor || 'Por completar' }} ({{ funcionarioActual.rutMenor || 'S/R' }})
+              <span *ngIf="funcionarioActual.fechaNacimientoMenor">
+                — Nac: {{ funcionarioActual.fechaNacimientoMenor | date:'dd/MM/yyyy' }}
+              </span>
+            </strong>
           </div>
         </div>
 
@@ -109,6 +114,10 @@ import { SimuladorFechaService } from '../../core/services/simulador-fecha.servi
             <div class="form-group">
               <label>RUT del Menor</label>
               <input type="text" class="input-control" [(ngModel)]="formFicha.rutMenor" />
+            </div>
+            <div class="form-group">
+              <label>Fecha de Nacimiento del Menor (Lactante)</label>
+              <input type="date" class="input-control" [(ngModel)]="formFicha.fechaNacimientoMenor" />
             </div>
           </div>
           <div class="form-actions">
@@ -154,9 +163,10 @@ import { SimuladorFechaService } from '../../core/services/simulador-fecha.servi
         </div>
 
         <!-- AVISO INSTITUCIONAL DE FINALIZACIÓN DE DERECHO (LÍMITE LEGAL 2 AÑOS) -->
+        <!-- Solo aplica si la funcionaria tenía su beneficio activo en Lista de Pago y el menor cumplió los 2 años -->
         <div
           class="novedad-alert con-novedad"
-          *ngIf="esDerechoFinalizadoPostulante()"
+          *ngIf="solicitudActiva && solicitudActiva.enListaPagoActiva && esDerechoFinalizadoPostulante()"
           style="margin-bottom: 1.25rem; border: 2px solid #ef4444; background: #fef2f2; color: #991b1b; padding: 1.25rem; border-radius: 8px;"
         >
           <div style="display: flex; gap: 0.85rem; align-items: flex-start;">
@@ -167,14 +177,14 @@ import { SimuladorFechaService } from '../../core/services/simulador-fecha.servi
               </h3>
               <p style="margin: 0 0 0.5rem 0; font-size: 0.9rem; line-height: 1.45;">
                 Estimada funcionaria <strong>{{ funcionarioActual.nombreCompleto }}</strong>:<br />
-                Le informamos formalmente que el derecho al beneficio de Sala Cuna / Bono Compensatorio para su hijo(a) <strong>{{ funcionarioActual.nombreMenor || 'Lactante causante' }}</strong> ha <strong>FINALIZADO</strong> con fecha <strong>{{ (calcularFechaCumple2AnosPostulante() | date:'dd/MM/yyyy') || '15/03/2026' }}</strong>, en estricto cumplimiento de lo establecido en la <strong>Orden General N° 2551 de la Jefatura de Bienestar</strong> y el <strong>Artículo 203 del Código del Trabajo</strong> (límite reglamentario de 2 años de edad).
+                Le informamos formalmente que el derecho al beneficio de Sala Cuna / Bono Compensatorio para su hijo(a) <strong>{{ funcionarioActual.nombreMenor || 'Lactante causante' }}</strong> ha <strong>FINALIZADO</strong> con fecha <strong>{{ calcularFechaCumple2AnosPostulante() | date:'dd/MM/yyyy' }}</strong>, en estricto cumplimiento de lo establecido en la <strong>Orden General N° 2551 de la Jefatura de Bienestar</strong> y el <strong>Artículo 203 del Código del Trabajo</strong> (límite reglamentario de 2 años de edad).
               </p>
               <div
-                *ngIf="solicitudActiva?.observacionesCoordinador || solicitudActiva?.motivoRechazoCorrecciones"
+                *ngIf="solicitudActiva.observacionesCoordinador || solicitudActiva.motivoRechazoCorrecciones"
                 style="margin: 0.5rem 0; padding: 0.5rem 0.75rem; background: #fff1f2; border-left: 4px solid #e11d48; font-size: 0.85rem; color: #881337;"
               >
                 📝 <strong>Observaciones registradas en su expediente:</strong>
-                {{ solicitudActiva?.observacionesCoordinador || solicitudActiva?.motivoRechazoCorrecciones }}
+                {{ solicitudActiva.observacionesCoordinador || solicitudActiva.motivoRechazoCorrecciones }}
               </div>
               <p style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: #b91c1c; font-weight: 600;">
                 ℹ Su beneficio ha egresado de la Lista de Pago Activa. Ya no debe remitir declaraciones mensuales del Día 30 para períodos posteriores a su cumplimiento.
@@ -601,15 +611,19 @@ export class VistaPostulanteComponent implements OnInit {
   // Lógica de Término de Derecho por Límite Legal de 2 Años (O.G. N° 2551)
   calcularFechaCumple2AnosPostulante(): Date | null {
     const fnStr =
-      this.funcionarioActual?.fechaNacimientoMenor ||
       this.solicitudActiva?.fechaNacimientoMenor ||
-      '2024-03-15';
+      this.funcionarioActual?.fechaNacimientoMenor;
+    if (!fnStr) return null;
     const fn = new Date(fnStr);
     if (isNaN(fn.getTime())) return null;
     return new Date(fn.getFullYear() + 2, fn.getMonth(), fn.getDate(), 23, 59, 59);
   }
 
   esDerechoFinalizadoPostulante(): boolean {
+    // Solo aplica si la funcionaria tiene una solicitud activa en lista de pago o con resolución emitida
+    if (!this.solicitudActiva || !this.solicitudActiva.enListaPagoActiva) {
+      return false;
+    }
     const limite = this.calcularFechaCumple2AnosPostulante();
     if (!limite) return false;
     return this.simuladorFecha.fechaActual >= limite;
@@ -693,7 +707,8 @@ Viene en solicitar al señor Director General ordenar a quien corresponda se rec
       unidad: func.unidad || '',
       correoElectronico: func.correoElectronico,
       nombreMenor: func.nombreMenor || '',
-      rutMenor: func.rutMenor || ''
+      rutMenor: func.rutMenor || '',
+      fechaNacimientoMenor: func.fechaNacimientoMenor || ''
     };
     this.cargarSolicitudes();
     this.cargarMisControles();

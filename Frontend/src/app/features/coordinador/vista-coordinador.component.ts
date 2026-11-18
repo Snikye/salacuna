@@ -545,14 +545,14 @@ interface EvaluacionDocFormulario {
                   <td><span class="side-badge">{{ ben.codigoRegion }}</span></td>
                   <td>
                     <div><strong>{{ ben.nombreMenor || 'Lactante causante' }}</strong></div>
-                    <small class="text-muted">F.Nac: {{ (ben.fechaNacimientoMenor | date:'dd/MM/yyyy') || '15/03/2024' }}</small>
+                    <small class="text-muted">F.Nac: {{ (ben.fechaNacimientoMenor | date:'dd/MM/yyyy') || 'Sin fecha' }}</small>
                   </td>
                   <td>
                     <span class="slot-badge ok" style="font-weight: 600;">
                       {{ calcularEdadDetalle(ben.fechaNacimientoMenor) }}
                     </span>
-                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.2rem;">
-                      Límite: {{ (calcularFechaCumple2Anos(ben.fechaNacimientoMenor) | date:'dd/MM/yyyy') || '15/03/2026' }}
+                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.2rem;" *ngIf="calcularFechaCumple2Anos(ben.fechaNacimientoMenor)">
+                      Límite: {{ calcularFechaCumple2Anos(ben.fechaNacimientoMenor) | date:'dd/MM/yyyy' }}
                     </div>
                   </td>
                   <td><strong>{{ ben.resolucion?.numeroResolucion }}</strong></td>
@@ -1090,10 +1090,10 @@ interface EvaluacionDocFormulario {
                     <div><strong>{{ fin.nombreMenor || 'Lactante causante' }}</strong></div>
                     <small class="mono-badge">{{ fin.rutMenor || 'S/R' }}</small>
                   </td>
-                  <td>{{ (fin.fechaNacimientoMenor | date:'dd/MM/yyyy') || '15/03/2024' }}</td>
+                  <td>{{ (fin.fechaNacimientoMenor | date:'dd/MM/yyyy') || 'Sin fecha' }}</td>
                   <td>
                     <strong style="color: #dc2626;">
-                      {{ (calcularFechaCumple2Anos(fin.fechaNacimientoMenor) | date:'dd/MM/yyyy') || '15/03/2026' }}
+                      {{ (calcularFechaCumple2Anos(fin.fechaNacimientoMenor) | date:'dd/MM/yyyy') || 'Cumplido' }}
                     </strong>
                   </td>
                   <td><span class="mono-badge">{{ fin.resolucion?.numeroResolucion }}</span></td>
@@ -1154,7 +1154,7 @@ interface EvaluacionDocFormulario {
               <div class="novedad-alert con-novedad" style="margin-bottom: 1rem; border-left: 4px solid #dc2626; background: #fff5f5;">
                 <h4 style="margin: 0 0 0.35rem 0; color: #991b1b;">Motivo de Egreso de Lista de Pago:</h4>
                 <div>
-                  El hijo(a) causante <strong>{{ selFin.nombreMenor }}</strong> (RUT: <span class="mono-badge">{{ selFin.rutMenor || 'S/R' }}</span>) nació el <strong>{{ (selFin.fechaNacimientoMenor | date:'dd/MM/yyyy') || '15/03/2024' }}</strong> y cumplió los 2 años de edad el día <strong style="color: #dc2626;">{{ (calcularFechaCumple2Anos(selFin.fechaNacimientoMenor) | date:'dd/MM/yyyy') || '15/03/2026' }}</strong>.
+                  El hijo(a) causante <strong>{{ selFin.nombreMenor }}</strong> (RUT: <span class="mono-badge">{{ selFin.rutMenor || 'S/R' }}</span>) nació el <strong>{{ (selFin.fechaNacimientoMenor | date:'dd/MM/yyyy') || 'Sin fecha' }}</strong> y cumplió los 2 años de edad el día <strong style="color: #dc2626;">{{ (calcularFechaCumple2Anos(selFin.fechaNacimientoMenor) | date:'dd/MM/yyyy') || 'Cumplido' }}</strong>.
                 </div>
                 <div *ngIf="selFin.observacionesCoordinador || selFin.motivoRechazoCorrecciones" style="margin-top: 0.5rem; font-weight: 600; color: #881337;">
                   📝 Observaciones registradas: {{ selFin.observacionesCoordinador || selFin.motivoRechazoCorrecciones }}
@@ -1311,22 +1311,22 @@ export class VistaCoordinadorComponent implements OnInit {
   // =========================================================================
 
   calcularFechaCumple2Anos(fechaNacStr?: string | null): Date | null {
-    // Si no viene fecha, asumimos por defecto la de Mateo Soto (15/03/2024) para el ejercicio
-    const str = fechaNacStr || '2024-03-15';
-    const fn = new Date(str);
+    if (!fechaNacStr) return null;
+    const fn = new Date(fechaNacStr);
     if (isNaN(fn.getTime())) return null;
     return new Date(fn.getFullYear() + 2, fn.getMonth(), fn.getDate(), 23, 59, 59);
   }
 
   esDerechoFinalizado(sol: SolicitudDto): boolean {
+    if (!sol.enListaPagoActiva && !sol.resolucion) return false;
     const limite = this.calcularFechaCumple2Anos(sol.fechaNacimientoMenor);
     if (!limite) return false;
     return this.simuladorFecha.fechaActual >= limite;
   }
 
   calcularEdadDetalle(fechaNacStr?: string | null): string {
-    const str = fechaNacStr || '2024-03-15';
-    const fn = new Date(str);
+    if (!fechaNacStr) return 'Sin fecha de nacimiento';
+    const fn = new Date(fechaNacStr);
     if (isNaN(fn.getTime())) return 'Fecha inválida';
     const ref = this.simuladorFecha.fechaActual;
 
